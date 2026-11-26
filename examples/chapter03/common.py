@@ -26,6 +26,6 @@ def ask_deepseek(messages, temperature=0.2):
 def parse_json(text):
     cleaned = text.strip()
     if cleaned.startswith("```"):
-        cleaned = cleaned.split("\n", 1)[1]
-        cleaned = cleaned.rsplit("```", 1)[0].strip()
+        lines = cleaned.splitlines()
+        cleaned = "\n".join(lines[1:-1]).strip()
     return json.loads(cleaned)
