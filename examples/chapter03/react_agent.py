@@ -1,71 +1,95 @@
+"""ReAct：让模型根据工具观察结果动态决定下一步行动。"""
 import json
+import os
 
-from common import ask_deepseek, parse_json
+from dotenv import load_dotenv
+from openai import OpenAI
 
+load_dotenv()
 
-KNOWLEDGE = {
-    "localhost": "Docker 容器内的 localhost 指向当前容器自身。",
-    "mysql": "MySQL 默认监听 3306 端口，容器间通信通常使用同一网络中的服务名。",
-    "connection refused": "连接被拒绝通常表示目标端口没有服务监听，或连接被主动拒绝。"
-}
-
-
-def search_knowledge(query):
-    matches = [value for key, value in KNOWLEDGE.items() if key.lower() in query.lower()]
-    return " ".join(matches) if matches else "知识库没有找到直接匹配项。"
+client = OpenAI(
+    api_key=os.getenv("DEEPSEEK_API_KEY"),
+    base_url="https://api.deepseek.com/v1"
+)
 
 
-def inspect_demo_config(target):
-    config = {
-        "database_host": "localhost",
-        "database_port": 3306,
-        "runtime": "Docker container"
+def ask_for_action(messages: list[dict]) -> dict:
+    response = client.chat.completions.create(
+        model=os.getenv("DEEPSEEK_MODEL"),
+        messages=messages,
+        response_format={"type": "json_object"},
+        temperature=0.2,
+    )
+    return json.loads(response.choices[0].message.content)
+
+
+def search_knowledge(query: str) -> str:
+    knowledge = {
+        "Agent": "Agent 能够围绕目标动态选择行动、调用工具，并根据观察结果推进任务。",
+        "Workflow": "Workflow 通过预先定义的步骤和控制逻辑组织任务执行。",
+        "ReAct": "ReAct 通过 Reason、Act、Observe 循环，让模型根据工具返回结果决定下一步。",
     }
-    return json.dumps(config, ensure_ascii=False)
+    for key, value in knowledge.items():
+        if key.lower() in query.lower():
+            return value
+    return "知识库中没有找到直接匹配的内容。"
+
+
+def get_product_info(product_name: str) -> str:
+    products = {
+        "Agent平台": "支持模型接入、工具调用和工作流编排。",
+        "知识库系统": "支持文档导入、向量检索和知识问答。",
+    }
+    return products.get(product_name, "没有找到对应产品信息。")
 
 
 TOOLS = {
-    "search_knowledge": search_knowledge,
-    "inspect_demo_config": inspect_demo_config
+    "search": search_knowledge,
+    "product": get_product_info,
 }
 
 
-def run_react(question, max_steps=5):
+def run_react_agent(question: str, max_steps: int = 6) -> str:
     messages = [
         {
             "role": "system",
             "content": (
-                "你是企业技术诊断 Agent。每轮只返回 JSON："
-                "{\"action\":\"工具名或finish\",\"input\":\"工具输入\",\"answer\":\"最终答案\"}。"
-                "可用工具 search_knowledge(query) 和 inspect_demo_config(target)。"
-                "只能选择给定工具，不得编造工具执行结果。"
-            )
+                "你是一个 ReAct Agent。根据当前任务和观察结果决定下一步行动。"
+                "只能返回 JSON。需要查询知识时返回 "
+                '{"action":"search","input":"查询内容"}；'
+                "需要查询产品时返回 "
+                '{"action":"product","input":"产品名称"}；'
+                '任务完成时返回 {"action":"finish","answer":"最终回答"}。'
+                "每次只选择一个动作，不要编造工具观察结果。"
+            ),
         },
-        {"role": "user", "content": question}
+        {"role": "user", "content": question},
     ]
 
+    observations = []
+
     for step in range(max_steps):
-        raw = ask_deepseek(messages)
-        decision = parse_json(raw)
+        decision = ask_for_action(messages)
         action = decision["action"]
+        print("第", step + 1, "轮决策：", decision)
 
         if action == "finish":
-            return decision.get("answer", "任务结束。")
+            answer = decision["answer"]
+            print("最终答案：", answer)
+            return answer
 
-        if action not in TOOLS:
-            observation = "工具不存在，程序拒绝执行。"
-        else:
-            observation = TOOLS[action](decision.get("input", ""))
+        observation = TOOLS[action](decision["input"])
+        observations.append(observation)
+        print("工具观察：", observation)
 
-        print("Step", step + 1, "Action", action, "Observation", observation)
-        messages.append({"role": "assistant", "content": raw})
+        messages.append({"role": "assistant", "content": json.dumps(decision, ensure_ascii=False)})
         messages.append({
             "role": "user",
-            "content": "工具执行结果：" + observation + "。请继续决策，或返回 finish。"
+            "content": "工具执行结果 Observation：" + observation + "。请根据结果决定下一步行动。",
         })
 
-    return "已达到最大执行轮数，停止继续调用工具。"
+    return "已达到最大执行轮数，停止 Agent。当前观察结果：" + " ".join(observations)
 
 
 if __name__ == "__main__":
-    print(run_react("FastAPI 部署在 Docker 后无法连接 MySQL，请检查可能原因。"))
+    run_react_agent("请解释 Agent 和 Workflow 的区别，并查询 Agent 平台可以提供哪些能力。")
