@@ -1,7 +1,10 @@
 """Routing：先识别客服意图，再分发到对应处理器。"""
 import os
+from dotenv import load_dotenv
 import json
 from openai import OpenAI
+
+load_dotenv()
 
 client = OpenAI(
     api_key=os.getenv("DEEPSEEK_API_KEY"),
@@ -11,7 +14,7 @@ client = OpenAI(
 
 def classify_intent(user_input: str) -> dict:
     response = client.chat.completions.create(
-        model="deepseek-chat",
+        model=os.getenv("DEEPSEEK_MODEL"),
         messages=[
             {
                 "role": "system",
