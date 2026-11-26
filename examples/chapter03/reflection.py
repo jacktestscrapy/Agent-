@@ -1,4 +1,5 @@
 """Reflection：生成初始方案，评价结果，再根据反馈进行修正。"""
+# 标准库：json 用于解析评审结果，os 用于读取模型配置。
 import json
 import os
 
@@ -7,12 +8,14 @@ from openai import OpenAI
 
 load_dotenv()
 
+# 从 .env 加载 DeepSeek API 配置，初始化模型客户端。
 client = OpenAI(
     api_key=os.getenv("DEEPSEEK_API_KEY"),
     base_url="https://api.deepseek.com/v1"
 )
 
 
+# 统一封装模型调用，减少生成、评审和修正函数中的重复代码。
 def ask_deepseek(messages: list[dict], temperature: float = 0.3) -> str:
     response = client.chat.completions.create(
         model=os.getenv("DEEPSEEK_MODEL"),
@@ -22,6 +25,7 @@ def ask_deepseek(messages: list[dict], temperature: float = 0.3) -> str:
     return response.choices[0].message.content or ""
 
 
+# Generator：根据需求生成初始技术方案，作为反思流程的输入。
 def generate_solution(requirement: str) -> str:
     messages = [
         {"role": "system", "content": "你是企业架构师，请给出结构清晰、可执行的技术方案。"},
@@ -36,6 +40,7 @@ def generate_solution(requirement: str) -> str:
     return ask_deepseek(messages)
 
 
+# Reflector：按明确的质量标准评审方案，并返回结构化反馈。
 def reflect_solution(solution: str) -> dict:
     messages = [
         {
@@ -57,6 +62,7 @@ def reflect_solution(solution: str) -> dict:
     return json.loads(response.choices[0].message.content)
 
 
+# Refiner：根据评审反馈修改原方案，保留原方案中合理的内容。
 def refine_solution(solution: str, feedback: dict) -> str:
     messages = [
         {"role": "system", "content": "你是技术方案修订专家，只修复评审指出的问题，保留原方案中合理的内容。"},
@@ -72,15 +78,18 @@ def refine_solution(solution: str, feedback: dict) -> str:
     return ask_deepseek(messages)
 
 
+# Reflection 主流程：反复评审和修正，并保存每一轮反馈记录。
 def run_reflection(requirement: str, max_iterations: int = 2) -> dict:
     solution = generate_solution(requirement)
     history = []
 
+    # 限制反思次数，防止模型在没有明显收益时无限修改。
     for index in range(max_iterations):
         feedback = reflect_solution(solution)
         history.append(feedback)
         print("第", index + 1, "轮评审反馈：", feedback)
 
+        # 评审通过后提前结束；否则根据反馈进入修正步骤。
         if feedback["passed"]:
             break
 
