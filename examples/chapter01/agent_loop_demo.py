@@ -7,7 +7,6 @@ from dataclasses import dataclass, field
 
 
 def search_knowledge(query: str) -> str:
-    """模拟知识库搜索工具。"""
     knowledge = {
         "agent": "Agent 是能够围绕目标选择行动、调用工具并根据观察结果推进任务的系统。",
         "workflow": "Workflow 使用预先定义的步骤和控制逻辑组织任务。",
@@ -36,7 +35,7 @@ def run_agent(question: str, max_steps: int = 5) -> str:
     state = AgentState(question=question)
 
     for step in range(max_steps):
-        print(f"\n[第 {step + 1} 轮] 当前问题：{state.question}")
+        print(f"[第 {step + 1} 轮] 当前问题：{state.question}")
         decision = decide(state)
         print("决策：", decision)
 
@@ -53,10 +52,9 @@ def run_agent(question: str, max_steps: int = 5) -> str:
     if not state.finished and len(state.observations) >= max_steps:
         print("达到最大执行轮数，停止循环。")
 
-    return "\n".join(state.observations) or "没有获得结果。"
+    return " ".join(state.observations) or "没有获得结果。"
 
 
 if __name__ == "__main__":
     answer = run_agent("什么是 Agent？")
-    print("\n最终结果：")
-    print(answer)
+    print("最终结果：", answer)
