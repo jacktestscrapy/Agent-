@@ -1,6 +1,9 @@
 """Prompt Chaining：生成文章大纲、撰写正文、编辑润色。"""
 import os
+from dotenv import load_dotenv
 from openai import OpenAI
+
+load_dotenv()
 
 client = OpenAI(
     api_key=os.getenv("DEEPSEEK_API_KEY"),
@@ -10,7 +13,7 @@ client = OpenAI(
 
 def ask_model(prompt: str) -> str:
     response = client.chat.completions.create(
-        model="deepseek-chat",
+        model=os.getenv("DEEPSEEK_MODEL"),
         messages=[
             {"role": "system", "content": "你是一名专业内容策划与编辑。严格按用户要求完成当前步骤。"},
             {"role": "user", "content": prompt},
