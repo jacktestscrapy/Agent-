@@ -4,7 +4,10 @@
 设置环境变量 DEEPSEEK_API_KEY 后运行本文件。
 """
 import os
+from dotenv import load_dotenv
 from openai import OpenAI
+
+load_dotenv()
 
 
 client = OpenAI(
@@ -15,7 +18,7 @@ client = OpenAI(
 
 def ask_deepseek(question: str) -> str:
     response = client.chat.completions.create(
-        model="deepseek-chat",
+        model=os.getenv("DEEPSEEK_MODEL"),
         messages=[
             {"role": "system", "content": "你是一名严谨的 AI Agent 技术讲师。回答清晰、准确，并给出必要的例子。"},
             {"role": "user", "content": question},
