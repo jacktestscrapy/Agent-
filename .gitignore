@@ -5,3 +5,7 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+# Course-generation rule files
+/docs/00_课程内容生成规范.md
+/AGENTS.md
