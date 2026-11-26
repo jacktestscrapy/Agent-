@@ -1,23 +1,15 @@
 """使用 DeepSeek 的 OpenAI 兼容接口完成一次 LLM 调用。
-这是第1章的模型接入基础，不是完整 Agent Loop。
 
-安装：
-    pip install openai
-
-设置环境变量：
-    Windows PowerShell: $env:DEEPSEEK_API_KEY="你的密钥"
-    macOS/Linux: export DEEPSEEK_API_KEY="你的密钥"
-
-运行：
-    python deepseek_first_call.py
+安装：pip install openai
+设置环境变量 DEEPSEEK_API_KEY 后运行本文件。
 """
 import os
 from openai import OpenAI
 
 
 client = OpenAI(
-    api_key=os.environ["DEEPSEEK_API_KEY"],
-    base_url="https://api.deepseek.com",
+    api_key=os.getenv("DEEPSEEK_API_KEY"),
+    base_url="https://api.deepseek.com/v1"
 )
 
 
@@ -25,10 +17,7 @@ def ask_deepseek(question: str) -> str:
     response = client.chat.completions.create(
         model="deepseek-chat",
         messages=[
-            {
-                "role": "system",
-                "content": "你是一名严谨的 AI Agent 技术讲师。回答清晰、准确，并给出必要的例子。",
-            },
+            {"role": "system", "content": "你是一名严谨的 AI Agent 技术讲师。回答清晰、准确，并给出必要的例子。"},
             {"role": "user", "content": question},
         ],
         temperature=0.2,
