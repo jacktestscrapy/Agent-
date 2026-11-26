@@ -1,7 +1,10 @@
 """Parallelization：并行执行多个独立分析任务，再汇总结果。"""
 import os
+from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
 from openai import OpenAI
+
+load_dotenv()
 
 client = OpenAI(
     api_key=os.getenv("DEEPSEEK_API_KEY"),
@@ -12,7 +15,7 @@ client = OpenAI(
 def analyze_dimension(topic: str, dimension: str) -> str:
     prompt = f"请从「{dimension}」角度分析主题「{topic}」。列出关键观察、依据类型和不确定性。不要编造数据。"
     response = client.chat.completions.create(
-        model="deepseek-chat",
+        model=os.getenv("DEEPSEEK_MODEL"),
         messages=[
             {"role": "system", "content": "你是一名严谨的商业研究分析师。区分事实、假设和推断。"},
             {"role": "user", "content": prompt},
@@ -25,7 +28,7 @@ def analyze_dimension(topic: str, dimension: str) -> str:
 def summarize(topic: str, results: dict) -> str:
     sections = " ".join(f"{name}分析：{content}" for name, content in results.items())
     response = client.chat.completions.create(
-        model="deepseek-chat",
+        model=os.getenv("DEEPSEEK_MODEL"),
         messages=[
             {"role": "system", "content": "你负责汇总多维度分析。指出共同结论、差异、风险和待验证事项。"},
             {"role": "user", "content": f"主题：{topic}。请汇总以下分析：{sections}"},
