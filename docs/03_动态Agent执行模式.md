@@ -219,7 +219,9 @@ ReAct 的执行路径不是固定的。每次观察到新结果后，模型都�
 工具函数示意：
 
 ~~~python
+# 根据用户问题检索本地知识库，演示 ReAct 中的一个只读工具。
 def search_knowledge(query):
+    # 教学示例使用字典模拟知识库，真实项目可替换为向量检索或数据库查询。
     knowledge = {
         "Agent": "Agent 能够围绕目标动态选择行动并调用工具。",
         "Workflow": "Workflow 通过预定义流程组织任务执行。"
@@ -232,7 +234,9 @@ def search_knowledge(query):
     return "没有找到相关知识。"
 
 
+# 根据产品名称查询产品资料，演示另一个可供 Agent 选择的工具。
 def get_product_info(product_name):
+    # 使用字典模拟产品数据，便于在课堂上观察工具输入和输出。
     products = {
         "Agent平台": "支持模型接入、工具调用和工作流编排。",
         "知识库系统": "支持文档导入、向量检索和知识问答。"
@@ -372,7 +376,9 @@ flowchart TD
 规划器负责生成任务列表：
 
 ~~~python
+# Planner：将用户的总体目标交给模型，要求模型拆解为可执行任务。
 def create_plan(goal):
+    # Prompt 明确任务字段，方便后续程序读取和执行。
     prompt = f"""
     请将下面的目标拆解成可执行任务：
     {goal}
@@ -386,7 +392,9 @@ def create_plan(goal):
 执行器负责完成单个任务：
 
 ~~~python
+# Executor：接收计划中的单个任务，并调用模型完成该任务。
 def execute_task(task):
+    # 将任务名称和描述传入模型，避免执行器丢失规划阶段的任务上下文。
     prompt = f"""
     请完成以下任务：
     任务名称：{task["task"]}
@@ -399,9 +407,11 @@ def execute_task(task):
 执行计划：
 
 ~~~python
+# 按计划顺序执行任务，并收集每个任务的执行结果。
 def run_plan(plan):
     results = []
 
+    # 教学示例按顺序执行；真实项目还需要处理依赖、失败重试和状态持久化。
     for task in plan:
         result = execute_task(task)
         results.append({
@@ -565,7 +575,9 @@ Reflection 可以多轮执行，但必须有最大迭代次数或质量阈值。
 生成初始方案：
 
 ~~~python
+# Generator：根据用户需求生成第一版技术方案。
 def generate_solution(requirement):
+    # 将需求作为上下文传入模型，生成后续评审所需的初始结果。
     prompt = f"""
     根据以下需求设计技术方案：
     {requirement}
@@ -578,7 +590,9 @@ def generate_solution(requirement):
 反思与修正：
 
 ~~~python
+# Reflector：按照指定评价维度检查初始方案，并返回问题和改进建议。
 def reflect_solution(solution):
+    # 评价标准越明确，反馈越容易转化为可执行的修改任务。
     prompt = f"""
     请从完整性、正确性、可行性和安全性四个维度
     评价下面的技术方案：
@@ -589,7 +603,9 @@ def reflect_solution(solution):
     return ask_deepseek(prompt)
 
 
+# Refiner：结合原方案和评审反馈生成修订版本。
 def refine_solution(solution, feedback):
+    # 同时提供原方案与反馈，避免模型只输出零散的修改意见。
     prompt = f"""
     请根据以下反馈修改技术方案：
     原方案：
@@ -606,9 +622,11 @@ def refine_solution(solution, feedback):
 执行逻辑：
 
 ~~~python
+# 组织 Reflection 闭环：生成、评价、修正，直到达到迭代上限。
 def run_reflection(requirement, max_iterations=2):
     solution = generate_solution(requirement)
 
+    # 每轮先评价当前版本，再根据反馈决定是否需要修正。
     for index in range(max_iterations):
         feedback = reflect_solution(solution)
         solution = refine_solution(solution, feedback)
@@ -1028,33 +1046,6 @@ Reflection 检查：
 - 智能技术问题诊断 Agent 系统架构图。
 - 动态 Agent 工程风险控制清单。
 - 3 个独立演示代码及 1 个综合组合示例。
-
-## 本章练习
-
-**练习一：识别执行模式**
-
-请判断以下任务更适合 Workflow、ReAct、Plan-and-Execute 还是 Reflection，并说明原因：
-
-1. 将用户输入的文章依次完成摘要、翻译和润色。
-2. 根据用户的问题动态查询知识库、订单系统或产品资料。
-3. 将“开发一个企业知识库系统”拆解为多个阶段并逐项执行。
-4. 对自动生成的代码进行测试、评价和修正。
-
-**练习二：设计 ReAct 工具**
-
-为一个企业技术支持 Agent 设计至少三个工具，说明每个工具的名称、输入参数、返回结果和权限级别，并画出 ReAct 执行流程。
-
-**练习三：设计 Plan-and-Execute**
-
-将“开发一个企业内部 AI 知识库问答系统”拆解为不少于五个子任务，标明任务依赖、预期产物和完成标准。再考虑其中一个任务失败时，Replanner 应如何调整计划。
-
-**练习四：设计 Reflection 评价标准**
-
-为一个自动生成 FastAPI 接口代码的 Agent 设计评价标准。至少包括语法、功能、边界处理、安全性和测试结果，并说明哪些评价可以由程序自动完成，哪些需要人工审核。
-
-**练习五：综合模式设计**
-
-以“FastAPI 服务无法连接 MySQL”为案例，设计 Plan-and-Execute、ReAct 和 Reflection 的组合方案，明确每种模式的职责、调用的工具、状态记录和人工审批节点。
 
 ## 延伸阅读
 
