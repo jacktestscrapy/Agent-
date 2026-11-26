@@ -1,4 +1,5 @@
 """综合案例：组合 Plan-and-Execute、ReAct 和 Reflection 诊断技术问题。"""
+# 标准库：json 处理模型结构化输出，os 读取环境变量。
 import json
 import os
 
@@ -7,12 +8,14 @@ from openai import OpenAI
 
 load_dotenv()
 
+# 加载 DeepSeek 配置并创建模型客户端；本示例的诊断工具均使用本地模拟数据。
 client = OpenAI(
     api_key=os.getenv("DEEPSEEK_API_KEY"),
     base_url="https://api.deepseek.com/v1"
 )
 
 
+# 统一封装模型文本请求，供诊断报告生成和修订环节使用。
 def ask_deepseek(messages: list[dict], temperature: float = 0.2) -> str:
     response = client.chat.completions.create(
         model=os.getenv("DEEPSEEK_MODEL"),
@@ -22,6 +25,7 @@ def ask_deepseek(messages: list[dict], temperature: float = 0.2) -> str:
     return response.choices[0].message.content or ""
 
 
+# Planner：将故障描述拆解为多个只读诊断任务。
 def create_plan(problem: str) -> list[dict]:
     messages = [
         {
@@ -42,6 +46,7 @@ def create_plan(problem: str) -> list[dict]:
     return json.loads(response.choices[0].message.content)["tasks"]
 
 
+# 模拟知识库查询工具，返回与容器网络和数据库连接有关的知识。
 def search_knowledge(query: str) -> str:
     return (
         "知识库记录：Docker 容器中的 localhost 指向当前容器自身。"
@@ -50,14 +55,17 @@ def search_knowledge(query: str) -> str:
     )
 
 
+# 模拟配置检查工具，返回示例数据库连接配置，不访问真实服务器。
 def inspect_config(query: str) -> str:
     return "模拟配置检查结果：DB_HOST=localhost，DB_PORT=3306，DB_NAME=company。"
 
 
+# 模拟服务状态查询工具，返回教学用的 MySQL 服务状态。
 def check_service(query: str) -> str:
     return "模拟服务检查结果：MySQL 容器状态为 running，监听端口为 3306。"
 
 
+# 模拟日志读取工具，返回教学用的数据库连接错误日志。
 def read_logs(query: str) -> str:
     return (
         "模拟日志内容：pymysql.err.OperationalError: "
@@ -65,6 +73,7 @@ def read_logs(query: str) -> str:
     )
 
 
+# 只读工具注册表：限制 Agent 可调用的工具范围，所有工具均返回模拟数据。
 TOOLS = {
     "search_knowledge": search_knowledge,
     "inspect_config": inspect_config,
@@ -73,6 +82,7 @@ TOOLS = {
 }
 
 
+# ReAct 子流程：根据诊断任务动态选择只读工具，并观察工具返回结果。
 def run_react(task: str, max_steps: int = 5) -> str:
     messages = [
         {
@@ -90,6 +100,7 @@ def run_react(task: str, max_steps: int = 5) -> str:
     ]
     observations = []
 
+    # 设置单个诊断任务的最大工具调用轮数。
     for step in range(max_steps):
         response = client.chat.completions.create(
             model=os.getenv("DEEPSEEK_MODEL"),
@@ -100,6 +111,7 @@ def run_react(task: str, max_steps: int = 5) -> str:
         decision = json.loads(response.choices[0].message.content)
         print("ReAct 第", step + 1, "轮决策：", decision)
 
+        # 当前诊断子任务完成后，返回模型给出的阶段性结论。
         if decision["action"] == "finish":
             return decision["answer"]
 
@@ -116,6 +128,7 @@ def run_react(task: str, max_steps: int = 5) -> str:
     return "达到最大执行轮数。已获得的观察结果：" + " ".join(observations)
 
 
+# Reflection 评审器：检查诊断报告是否有证据、原因、建议和风险提示。
 def reflect_report(report: str) -> dict:
     messages = [
         {
@@ -137,6 +150,7 @@ def reflect_report(report: str) -> dict:
     return json.loads(response.choices[0].message.content)
 
 
+# 根据评审反馈修订诊断报告，并区分事实、推断和待验证事项。
 def refine_report(report: str, feedback: dict) -> str:
     messages = [
         {"role": "system", "content": "你是技术诊断报告撰写助手，根据评审意见完善报告。"},
@@ -153,11 +167,13 @@ def refine_report(report: str, feedback: dict) -> str:
     return ask_deepseek(messages)
 
 
+# 综合入口：规划诊断任务，逐项运行 ReAct，生成报告并进行 Reflection 评审。
 def run_diagnosis(problem: str) -> dict:
     plan = create_plan(problem)
     print("Planner 生成的计划：", plan)
 
     task_results = []
+    # 按 Planner 生成的任务列表逐项诊断，并保存每项任务的结果。
     for task in plan:
         result = run_react(task["task"] + "。任务说明：" + task["description"])
         task_results.append({"task": task["task"], "result": result})
@@ -179,6 +195,7 @@ def run_diagnosis(problem: str) -> dict:
 
     feedback = reflect_report(report)
     print("Reflection 评价：", feedback)
+    # 如果评审未通过，则根据反馈修订一次；示例不执行无限反思循环。
     if not feedback["passed"]:
         report = refine_report(report, feedback)
 
