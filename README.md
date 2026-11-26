@@ -34,6 +34,7 @@
 |---|---|---|---|
 | 第1章 Agent设计模式基础 | [阅读教材](docs/01_Agent设计模式基础.md) | [章节练习](exercises/chapter01_exercises.md) | [查看演示代码](examples/chapter01/) |
 | 第2章 基础工作流设计模式 | [阅读教材](docs/02_基础工作流设计模式.md) | [章节练习](exercises/chapter02_exercises.md) | [查看演示代码](examples/chapter02/) |
+| 第3章 动态 Agent 执行模式 | [阅读教材](docs/03_动态Agent执行模式.md) | [章节练习](exercises/chapter03_exercises.md) | [查看演示代码](examples/chapter03/) |
 
 ## 综合项目：AI软件开发 Agent
 
