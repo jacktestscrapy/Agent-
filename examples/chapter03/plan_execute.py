@@ -1,4 +1,5 @@
 """Plan-and-Execute：先生成任务计划，再逐项执行并按需重新规划。"""
+# 标准库：json 用于处理计划数据，os 用于读取模型配置。
 import json
 import os
 
@@ -7,12 +8,14 @@ from openai import OpenAI
 
 load_dotenv()
 
+# 读取 .env 中的 DeepSeek 配置，创建 OpenAI 兼容客户端。
 client = OpenAI(
     api_key=os.getenv("DEEPSEEK_API_KEY"),
     base_url="https://api.deepseek.com/v1"
 )
 
 
+# 统一封装模型文本请求，供规划器、执行器和重新规划器复用。
 def ask_deepseek(messages: list[dict], temperature: float = 0.3) -> str:
     response = client.chat.completions.create(
         model=os.getenv("DEEPSEEK_MODEL"),
@@ -22,6 +25,7 @@ def ask_deepseek(messages: list[dict], temperature: float = 0.3) -> str:
     return response.choices[0].message.content or ""
 
 
+# Planner：把总体目标拆解为带有编号、描述和状态的任务列表。
 def create_plan(goal: str) -> list[dict]:
     messages = [
         {
@@ -43,6 +47,7 @@ def create_plan(goal: str) -> list[dict]:
     return json.loads(response.choices[0].message.content)["tasks"]
 
 
+# Executor：执行一个具体子任务，并要求模型区分事实与假设。
 def execute_task(task: dict) -> str:
     messages = [
         {"role": "system", "content": "你是企业技术分析执行器，按任务说明完成工作，区分事实与假设。"},
@@ -58,6 +63,7 @@ def execute_task(task: dict) -> str:
     return ask_deepseek(messages)
 
 
+# Replanner：结合已完成任务和失败信息，生成后续可执行的新计划。
 def replan(goal: str, completed: list[dict], failed_task: dict, failure_result: str) -> list[dict]:
     messages = [
         {
@@ -88,6 +94,7 @@ def replan(goal: str, completed: list[dict], failed_task: dict, failure_result: 
     return json.loads(response.choices[0].message.content)["tasks"]
 
 
+# 主流程：创建计划、逐项执行、记录状态，并在遇到失败时尝试重新规划。
 def run_plan(goal: str, max_replans: int = 1) -> dict:
     plan = create_plan(goal)
     results = []
@@ -96,13 +103,16 @@ def run_plan(goal: str, max_replans: int = 1) -> dict:
 
     print("初始计划：", plan)
 
+    # 通过索引跟踪当前任务，重新规划后可以替换尚未执行的计划部分。
     while index < len(plan):
         task = plan[index]
         print("执行任务：", task["task"])
         result = execute_task(task)
         print("执行结果：", result)
 
+        # 教学示例用文本关键词模拟失败判断；生产系统应使用结构化状态码。
         if "无法完成" in result or "无法获取" in result:
+            # 只有剩余重新规划预算未耗尽时，才请求 Replanner 生成新计划。
             if replan_count < max_replans:
                 remaining = replan(goal, results, task, result)
                 plan = plan[:index] + remaining
