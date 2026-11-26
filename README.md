@@ -53,7 +53,7 @@
 
 项目将关注可执行工具、文件与代码仓库操作、测试反馈、自动修复、权限控制及人工审核等环节。
 
-## 代码规范\n\n- 所有 DeepSeek 演示代码统一使用 OpenAI 兼容客户端：`client = OpenAI(api_key=os.getenv("DEEPSEEK_API_KEY"), base_url="https://api.deepseek.com/v1")`。\n- 演示代码中的 `print` 和 `return` 不使用 `\\n` 字符串拼接换行，多个内容项直接使用空格分隔。\n\n## 技术方向
+## 技术方向
 
 - Python
 - DeepSeek API
