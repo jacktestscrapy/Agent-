@@ -1,7 +1,10 @@
 """组合 Workflow：先提取问题，再并行分析，最后汇总。"""
 import os
+from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
 from openai import OpenAI
+
+load_dotenv()
 
 client = OpenAI(
     api_key=os.getenv("DEEPSEEK_API_KEY"),
@@ -11,7 +14,7 @@ client = OpenAI(
 
 def ask(prompt: str) -> str:
     response = client.chat.completions.create(
-        model="deepseek-chat",
+        model=os.getenv("DEEPSEEK_MODEL"),
         messages=[
             {"role": "system", "content": "你是一名企业研究分析师。不要编造事实和数据。"},
             {"role": "user", "content": prompt},
